@@ -1,6 +1,30 @@
 import React, { useState } from 'react';
 import { playCalcBeep } from '../utils/audio';
 
+// Helper labels for each digit
+const DIGIT_LABELS = {
+  0: 'ZERO',
+  1: '#1 BEST DIGIT',
+  2: 'TWO',
+  3: 'THREE',
+  4: 'FOUR / QUATRE',
+  5: 'FIVE',
+  6: 'SIX',
+  7: 'SEVEN',
+  8: 'INFINITY',
+  9: 'OR UPSIDE-DOWN 6',
+};
+
+// Fisher-Yates shuffle
+function shuffle(array) {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 export default function WorstCalculator() {
   const [display, setDisplay] = useState('0');
   const [prevValue, setPrevValue] = useState(null);
@@ -8,6 +32,16 @@ export default function WorstCalculator() {
   const [waitingForOperand, setWaitingForOperand] = useState(false);
   const [historyExpr, setHistoryExpr] = useState('');
   const [lastCalculation, setLastCalculation] = useState('');
+  
+  // Digits in slots (0 to 9 scrambled across slots)
+  const [digits, setDigits] = useState([7, 1, 9, 4, 0, 8, 2, 6, 3, 5]);
+  const [scrambleCount, setScrambleCount] = useState(0);
+
+  // Scramble the digits across the pad after every press
+  const scrambleNumberPad = () => {
+    setDigits((prev) => shuffle(prev));
+    setScrambleCount((c) => c + 1);
+  };
 
   // Handle digit click
   const inputDigit = (digit) => {
@@ -18,6 +52,7 @@ export default function WorstCalculator() {
     } else {
       setDisplay(display === '0' ? String(digit) : display + digit);
     }
+    scrambleNumberPad();
   };
 
   // Handle decimal
@@ -26,11 +61,10 @@ export default function WorstCalculator() {
     if (waitingForOperand) {
       setDisplay('0.');
       setWaitingForOperand(false);
-      return;
-    }
-    if (!display.includes('.')) {
+    } else if (!display.includes('.')) {
       setDisplay(display + '.');
     }
+    scrambleNumberPad();
   };
 
   // Handle operators (+, -, *, /)
@@ -52,6 +86,7 @@ export default function WorstCalculator() {
 
     setWaitingForOperand(true);
     setOperator(nextOperator);
+    scrambleNumberPad();
   };
 
   // Calculate binary operation
@@ -86,6 +121,7 @@ export default function WorstCalculator() {
       setOperator(null);
       setWaitingForOperand(true);
     }
+    scrambleNumberPad();
   };
 
   // Clear (C)
@@ -96,6 +132,7 @@ export default function WorstCalculator() {
     setOperator(null);
     setWaitingForOperand(false);
     setHistoryExpr('');
+    scrambleNumberPad();
   };
 
   return (
@@ -103,7 +140,7 @@ export default function WorstCalculator() {
       {/* OBNOXIOUS RETRO TICKER */}
       <div className="w-full bg-black text-[#00ff00] font-mono text-[11px] py-1 px-2 border-y-2 border-yellow-400 overflow-hidden mb-3 shadow">
         <div className="retro-marquee font-bold">
-          ⚠️ ARITHMETIC SYSTEM ARMED & READY • ACCURACY RATING: 99.98% • BEWARE OF MICROSCOPIC OPERATORS WEDGED IN CREVICES • GIANT DIGITS ARE HIGH VOLTAGE • NO REFUNDS FOR MATH ERRORS •
+          ⚠️ ARITHMETIC SYSTEM ARMED & READY • DIGITS SCRAMBLE AFTER EVERY SINGLE KEYPRESS TO FOIL MUSCLE MEMORY • ACCURACY RATING: 99.98% • BEWARE OF MICROSCOPIC OPERATORS WEDGED IN CREVICES • GIANT DIGITS ARE HIGH VOLTAGE • NO REFUNDS FOR MATH ERRORS •
         </div>
       </div>
 
@@ -113,7 +150,7 @@ export default function WorstCalculator() {
           📟 THE ULTIMATE USER-HOSTILE CALCULATOR 📟
         </h2>
         <p className="text-[11px] font-papyrus text-stone-800 font-bold mt-1">
-          "Engineered by top UX sadists to test your sanity and motor precision"
+          "Engineered by top UX sadists — numbers reshuffle perpetually after every click!"
         </p>
       </div>
 
@@ -121,32 +158,36 @@ export default function WorstCalculator() {
       <div className="max-w-4xl mx-auto bg-[#c5a059] p-4 border-8 border-double border-[#5c3a00] shadow-[12px_12px_0_#2b1800] relative">
         <div className="flex justify-between items-center mb-3 border-b-2 border-black pb-1 text-[10px] font-mono text-amber-950 font-bold">
           <span>STATUS: ARITHMETIC UNLOCKED</span>
-          <span className="animate-ping text-red-700">● LIVE DEMO MODE</span>
+          <span className="bg-red-600 text-yellow-200 px-1 border border-black animate-pulse">
+            🔀 SHUFFLES TRIGGERED: {scrambleCount}
+          </span>
           <span>CALC-CORE 64-BIT</span>
         </div>
 
         {/* 
-          JUMBLED DIGITS LAYOUT:
-          Order: 7, 1 (GIANT ~15% on top-right), 9, 4, 0, 8, 2, 6, 3, 5
-          Microscopic operators wedged in crevices:
-          - '+' wedged right after giant 1 on top-right
-          - '-', '*', '/', 'C', '=' scattered awkwardly in crevices
+          JUMBLED DIGITS GRID:
+          Digits 0-9 dynamically scrambled after EVERY press!
+          - Slot 0: Top-left giant digit
+          - Slot 1: Top-right mega giant digit (~15% screen coverage), with tiny '+' wedged right beside it!
+          - Crevices: microscopic '-', '*', '/', 'C', '=', '.'
         */}
         <div className="grid grid-cols-12 gap-2 relative min-h-[460px] items-stretch">
           
-          {/* GIANT DIGIT: 7 */}
+          {/* SLOT 0: GIANT DIGIT */}
           <div className="col-span-5 md:col-span-4 flex items-center justify-center">
             <button
               type="button"
-              onClick={() => inputDigit(7)}
-              className="w-full h-32 md:h-36 bg-[#ff0055] hover:bg-[#ff3377] text-yellow-300 font-black text-6xl md:text-7xl rounded-none border-4 border-black shadow-[6px_6px_0_#4a0018] active:translate-y-1 transform -rotate-2 cursor-pointer flex flex-col items-center justify-center"
+              onClick={() => inputDigit(digits[0])}
+              className="w-full h-32 md:h-36 bg-[#ff0055] hover:bg-[#ff3377] text-yellow-300 font-black text-6xl md:text-7xl rounded-none border-4 border-black shadow-[6px_6px_0_#4a0018] active:translate-y-1 transform -rotate-2 cursor-pointer flex flex-col items-center justify-center transition-all duration-75"
             >
-              <span>7</span>
-              <span className="text-[9px] text-white tracking-widest font-mono">SEVEN</span>
+              <span>{digits[0]}</span>
+              <span className="text-[9px] text-white tracking-widest font-mono">
+                {DIGIT_LABELS[digits[0]]}
+              </span>
             </button>
           </div>
 
-          {/* CREVICE 1: Tiny Minus '-' and Tiny Clear 'C' wedged between 7 and top-right area */}
+          {/* CREVICE 1: Tiny Minus '-' and Tiny Clear 'C' wedged between Slot 0 and top-right area */}
           <div className="col-span-1 flex flex-col items-center justify-around py-2">
             <button
               type="button"
@@ -167,20 +208,20 @@ export default function WorstCalculator() {
           </div>
 
           {/* 
-            GIANT DIGIT: 1 (PROMINENTLY TOP-RIGHT, COVERING ~15% OF SCREEN AREA)
+            SLOT 1: MEGA GIANT DIGIT (PROMINENTLY TOP-RIGHT, COVERING ~15% OF SCREEN AREA)
             Followed immediately by microscopic '+' wedged right after it!
           */}
           <div className="col-span-6 md:col-span-7 flex items-center justify-start gap-1 pl-2">
             <button
               type="button"
-              onClick={() => inputDigit(1)}
+              onClick={() => inputDigit(digits[1])}
               style={{ minHeight: '140px' }}
-              className="w-[85%] h-36 md:h-44 bg-[#00e5ff] hover:bg-[#66eeff] text-[#990033] font-black text-7xl md:text-8xl rounded-none border-6 border-black shadow-[8px_8px_0_#004d40] active:translate-y-1 transform rotate-1 cursor-pointer flex flex-col items-center justify-center"
+              className="w-[85%] h-36 md:h-44 bg-[#00e5ff] hover:bg-[#66eeff] text-[#990033] font-black text-7xl md:text-8xl rounded-none border-6 border-black shadow-[8px_8px_0_#004d40] active:translate-y-1 transform rotate-1 cursor-pointer flex flex-col items-center justify-center transition-all duration-75"
             >
               <div className="flex items-baseline">
-                <span>1</span>
+                <span>{digits[1]}</span>
                 <span className="text-xs text-black font-mono ml-2 uppercase bg-yellow-300 px-1 border border-black">
-                  #1 BEST DIGIT
+                  {DIGIT_LABELS[digits[1]]}
                 </span>
               </div>
               <span className="text-[10px] text-black font-bold tracking-widest font-comic">
@@ -188,12 +229,12 @@ export default function WorstCalculator() {
               </span>
             </button>
 
-            {/* MICROSCOPIC '+' OPERATOR WEDGED RIGHT AFTER GIANT 1 */}
+            {/* MICROSCOPIC '+' OPERATOR WEDGED RIGHT AFTER GIANT SLOT 1 */}
             <div className="flex flex-col items-center justify-center self-start mt-2">
               <button
                 type="button"
                 onClick={() => performOperation('+')}
-                title="Microscopic Plus Operator (Wedged beside Giant 1)"
+                title="Microscopic Plus Operator (Wedged beside Giant Slot)"
                 className="w-[14px] h-[14px] text-[9px] leading-none p-0 bg-white hover:bg-yellow-300 text-black font-mono font-black border border-black cursor-pointer flex items-center justify-center shadow-none active:bg-green-400 animate-pulse"
               >
                 +
@@ -204,16 +245,18 @@ export default function WorstCalculator() {
             </div>
           </div>
 
-          {/* MIDDLE ROW: 9, 4, 0, with microscopic * and / */}
-          {/* GIANT DIGIT: 9 */}
+          {/* MIDDLE ROW: Slot 2, Slot 3, Slot 4, with microscopic * and / */}
+          {/* SLOT 2: GIANT DIGIT */}
           <div className="col-span-4 md:col-span-3 flex items-center justify-center">
             <button
               type="button"
-              onClick={() => inputDigit(9)}
-              className="w-full h-28 md:h-32 bg-[#a3e635] hover:bg-[#bef264] text-black font-black text-6xl md:text-7xl rounded-none border-4 border-black shadow-[5px_5px_0_#365314] active:translate-y-1 transform rotate-2 cursor-pointer flex flex-col items-center justify-center"
+              onClick={() => inputDigit(digits[2])}
+              className="w-full h-28 md:h-32 bg-[#a3e635] hover:bg-[#bef264] text-black font-black text-6xl md:text-7xl rounded-none border-4 border-black shadow-[5px_5px_0_#365314] active:translate-y-1 transform rotate-2 cursor-pointer flex flex-col items-center justify-center transition-all duration-75"
             >
-              <span>9</span>
-              <span className="text-[8px] font-mono text-gray-800">OR UPSIDE-DOWN 6</span>
+              <span>{digits[2]}</span>
+              <span className="text-[8px] font-mono text-gray-800">
+                {DIGIT_LABELS[digits[2]]}
+              </span>
             </button>
           </div>
 
@@ -229,15 +272,17 @@ export default function WorstCalculator() {
             </button>
           </div>
 
-          {/* GIANT DIGIT: 4 */}
+          {/* SLOT 3: GIANT DIGIT */}
           <div className="col-span-4 md:col-span-4 flex items-center justify-center">
             <button
               type="button"
-              onClick={() => inputDigit(4)}
-              className="w-full h-28 md:h-32 bg-[#f97316] hover:bg-[#fb923c] text-white font-black text-6xl md:text-7xl rounded-none border-4 border-black shadow-[5px_5px_0_#7c2d12] active:translate-y-1 transform -rotate-1 cursor-pointer flex flex-col items-center justify-center"
+              onClick={() => inputDigit(digits[3])}
+              className="w-full h-28 md:h-32 bg-[#f97316] hover:bg-[#fb923c] text-white font-black text-6xl md:text-7xl rounded-none border-4 border-black shadow-[5px_5px_0_#7c2d12] active:translate-y-1 transform -rotate-1 cursor-pointer flex flex-col items-center justify-center transition-all duration-75"
             >
-              <span>4</span>
-              <span className="text-[8px] font-mono text-yellow-200">FOUR / QUATRE</span>
+              <span>{digits[3]}</span>
+              <span className="text-[8px] font-mono text-yellow-200">
+                {DIGIT_LABELS[digits[3]]}
+              </span>
             </button>
           </div>
 
@@ -253,40 +298,46 @@ export default function WorstCalculator() {
             </button>
           </div>
 
-          {/* GIANT DIGIT: 0 */}
+          {/* SLOT 4: GIANT DIGIT */}
           <div className="col-span-2 md:col-span-3 flex items-center justify-center">
             <button
               type="button"
-              onClick={() => inputDigit(0)}
-              className="w-full h-28 md:h-32 bg-[#e879f9] hover:bg-[#f0abfc] text-black font-black text-6xl md:text-7xl rounded-none border-4 border-black shadow-[5px_5px_0_#701a75] active:translate-y-1 transform rotate-3 cursor-pointer flex flex-col items-center justify-center"
+              onClick={() => inputDigit(digits[4])}
+              className="w-full h-28 md:h-32 bg-[#e879f9] hover:bg-[#f0abfc] text-black font-black text-6xl md:text-7xl rounded-none border-4 border-black shadow-[5px_5px_0_#701a75] active:translate-y-1 transform rotate-3 cursor-pointer flex flex-col items-center justify-center transition-all duration-75"
             >
-              <span>0</span>
-              <span className="text-[8px] font-mono text-purple-900">ZERO</span>
+              <span>{digits[4]}</span>
+              <span className="text-[8px] font-mono text-purple-900">
+                {DIGIT_LABELS[digits[4]]}
+              </span>
             </button>
           </div>
 
-          {/* BOTTOM ROW OF NUMBERS: 8, 2, 6, 3, 5 */}
-          {/* GIANT DIGIT: 8 */}
+          {/* BOTTOM ROW: Slot 5, Slot 6, Slot 7, Slot 8, Slot 9 */}
+          {/* SLOT 5: GIANT DIGIT */}
           <div className="col-span-3 md:col-span-2 flex items-center justify-center">
             <button
               type="button"
-              onClick={() => inputDigit(8)}
-              className="w-full h-28 md:h-32 bg-[#fbbf24] hover:bg-[#fde047] text-[#1e1b4b] font-black text-5xl md:text-6xl rounded-none border-4 border-black shadow-[4px_4px_0_#78350f] active:translate-y-1 transform -rotate-2 cursor-pointer flex flex-col items-center justify-center"
+              onClick={() => inputDigit(digits[5])}
+              className="w-full h-28 md:h-32 bg-[#fbbf24] hover:bg-[#fde047] text-[#1e1b4b] font-black text-5xl md:text-6xl rounded-none border-4 border-black shadow-[4px_4px_0_#78350f] active:translate-y-1 transform -rotate-2 cursor-pointer flex flex-col items-center justify-center transition-all duration-75"
             >
-              <span>8</span>
-              <span className="text-[7px] font-mono">INFINITY</span>
+              <span>{digits[5]}</span>
+              <span className="text-[7px] font-mono">
+                {DIGIT_LABELS[digits[5]]}
+              </span>
             </button>
           </div>
 
-          {/* GIANT DIGIT: 2 */}
+          {/* SLOT 6: GIANT DIGIT */}
           <div className="col-span-3 md:col-span-2 flex items-center justify-center">
             <button
               type="button"
-              onClick={() => inputDigit(2)}
-              className="w-full h-28 md:h-32 bg-[#38bdf8] hover:bg-[#7dd3fc] text-black font-black text-5xl md:text-6xl rounded-none border-4 border-black shadow-[4px_4px_0_#0369a1] active:translate-y-1 transform rotate-1 cursor-pointer flex flex-col items-center justify-center"
+              onClick={() => inputDigit(digits[6])}
+              className="w-full h-28 md:h-32 bg-[#38bdf8] hover:bg-[#7dd3fc] text-black font-black text-5xl md:text-6xl rounded-none border-4 border-black shadow-[4px_4px_0_#0369a1] active:translate-y-1 transform rotate-1 cursor-pointer flex flex-col items-center justify-center transition-all duration-75"
             >
-              <span>2</span>
-              <span className="text-[7px] font-mono">TWO</span>
+              <span>{digits[6]}</span>
+              <span className="text-[7px] font-mono">
+                {DIGIT_LABELS[digits[6]]}
+              </span>
             </button>
           </div>
 
@@ -303,27 +354,31 @@ export default function WorstCalculator() {
             <span className="text-[7px] font-mono text-black font-bold">eq</span>
           </div>
 
-          {/* GIANT DIGIT: 6 */}
+          {/* SLOT 7: GIANT DIGIT */}
           <div className="col-span-2 md:col-span-2 flex items-center justify-center">
             <button
               type="button"
-              onClick={() => inputDigit(6)}
-              className="w-full h-28 md:h-32 bg-[#ec4899] hover:bg-[#f472b6] text-yellow-200 font-black text-5xl md:text-6xl rounded-none border-4 border-black shadow-[4px_4px_0_#831843] active:translate-y-1 transform -rotate-3 cursor-pointer flex flex-col items-center justify-center"
+              onClick={() => inputDigit(digits[7])}
+              className="w-full h-28 md:h-32 bg-[#ec4899] hover:bg-[#f472b6] text-yellow-200 font-black text-5xl md:text-6xl rounded-none border-4 border-black shadow-[4px_4px_0_#831843] active:translate-y-1 transform -rotate-3 cursor-pointer flex flex-col items-center justify-center transition-all duration-75"
             >
-              <span>6</span>
-              <span className="text-[7px] font-mono">SIX</span>
+              <span>{digits[7]}</span>
+              <span className="text-[7px] font-mono">
+                {DIGIT_LABELS[digits[7]]}
+              </span>
             </button>
           </div>
 
-          {/* GIANT DIGIT: 3 */}
+          {/* SLOT 8: GIANT DIGIT */}
           <div className="col-span-3 md:col-span-2 flex items-center justify-center">
             <button
               type="button"
-              onClick={() => inputDigit(3)}
-              className="w-full h-28 md:h-32 bg-[#10b981] hover:bg-[#34d399] text-black font-black text-5xl md:text-6xl rounded-none border-4 border-black shadow-[4px_4px_0_#064e3b] active:translate-y-1 transform rotate-2 cursor-pointer flex flex-col items-center justify-center"
+              onClick={() => inputDigit(digits[8])}
+              className="w-full h-28 md:h-32 bg-[#10b981] hover:bg-[#34d399] text-black font-black text-5xl md:text-6xl rounded-none border-4 border-black shadow-[4px_4px_0_#064e3b] active:translate-y-1 transform rotate-2 cursor-pointer flex flex-col items-center justify-center transition-all duration-75"
             >
-              <span>3</span>
-              <span className="text-[7px] font-mono">THREE</span>
+              <span>{digits[8]}</span>
+              <span className="text-[7px] font-mono">
+                {DIGIT_LABELS[digits[8]]}
+              </span>
             </button>
           </div>
 
@@ -339,15 +394,17 @@ export default function WorstCalculator() {
             </button>
           </div>
 
-          {/* GIANT DIGIT: 5 */}
+          {/* SLOT 9: GIANT DIGIT */}
           <div className="col-span-11 md:col-span-2 flex items-center justify-center">
             <button
               type="button"
-              onClick={() => inputDigit(5)}
-              className="w-full h-28 md:h-32 bg-[#8b5cf6] hover:bg-[#a78bfa] text-yellow-300 font-black text-5xl md:text-6xl rounded-none border-4 border-black shadow-[4px_4px_0_#4c1d95] active:translate-y-1 transform -rotate-1 cursor-pointer flex flex-col items-center justify-center"
+              onClick={() => inputDigit(digits[9])}
+              className="w-full h-28 md:h-32 bg-[#8b5cf6] hover:bg-[#a78bfa] text-yellow-300 font-black text-5xl md:text-6xl rounded-none border-4 border-black shadow-[4px_4px_0_#4c1d95] active:translate-y-1 transform -rotate-1 cursor-pointer flex flex-col items-center justify-center transition-all duration-75"
             >
-              <span>5</span>
-              <span className="text-[7px] font-mono">FIVE</span>
+              <span>{digits[9]}</span>
+              <span className="text-[7px] font-mono">
+                {DIGIT_LABELS[digits[9]]}
+              </span>
             </button>
           </div>
 
@@ -356,10 +413,10 @@ export default function WorstCalculator() {
         {/* FUNNY HELPER STICKERS */}
         <div className="mt-4 pt-2 border-t-2 border-dashed border-black flex flex-wrap justify-between items-center text-[10px] text-black font-bold">
           <span className="bg-yellow-200 px-2 py-0.5 border border-black">
-            💡 Operator hint: tiny '+' is wedged directly to the right of Giant 1
+            💡 Numbers scramble into new slots after EVERY press!
           </span>
           <span className="bg-white px-2 py-0.5 border border-black">
-            Tiny '=', '-', '*', '/', 'C' are wedged in between digits!
+            Tiny '=', '-', '*', '/', 'C' wedged in between digits!
           </span>
         </div>
       </div>

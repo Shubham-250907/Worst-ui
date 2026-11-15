@@ -15,6 +15,9 @@ const DIGIT_LABELS = {
   9: 'OR UPSIDE-DOWN 6',
 };
 
+// Initial operators list (7 microscopic operators)
+const INITIAL_OPERATORS = ['-', 'C', '+', '*', '/', '=', '.'];
+
 // Fisher-Yates shuffle
 function shuffle(array) {
   const arr = [...array];
@@ -35,11 +38,14 @@ export default function WorstCalculator() {
   
   // Digits in slots (0 to 9 scrambled across slots)
   const [digits, setDigits] = useState([7, 1, 9, 4, 0, 8, 2, 6, 3, 5]);
+  // Operators in crevices (scrambled across crevices)
+  const [operators, setOperators] = useState(INITIAL_OPERATORS);
   const [scrambleCount, setScrambleCount] = useState(0);
 
-  // Scramble the digits across the pad after every press
-  const scrambleNumberPad = () => {
+  // Scramble BOTH digits and operators across the screen after every single press
+  const scrambleAll = () => {
     setDigits((prev) => shuffle(prev));
+    setOperators((prev) => shuffle(prev));
     setScrambleCount((c) => c + 1);
   };
 
@@ -52,7 +58,7 @@ export default function WorstCalculator() {
     } else {
       setDisplay(display === '0' ? String(digit) : display + digit);
     }
-    scrambleNumberPad();
+    scrambleAll();
   };
 
   // Handle decimal
@@ -64,10 +70,10 @@ export default function WorstCalculator() {
     } else if (!display.includes('.')) {
       setDisplay(display + '.');
     }
-    scrambleNumberPad();
+    scrambleAll();
   };
 
-  // Handle operators (+, -, *, /)
+  // Handle math binary operation (+, -, *, /)
   const performOperation = (nextOperator) => {
     playCalcBeep();
     const inputValue = parseFloat(display);
@@ -86,7 +92,7 @@ export default function WorstCalculator() {
 
     setWaitingForOperand(true);
     setOperator(nextOperator);
-    scrambleNumberPad();
+    scrambleAll();
   };
 
   // Calculate binary operation
@@ -121,7 +127,7 @@ export default function WorstCalculator() {
       setOperator(null);
       setWaitingForOperand(true);
     }
-    scrambleNumberPad();
+    scrambleAll();
   };
 
   // Clear (C)
@@ -132,7 +138,40 @@ export default function WorstCalculator() {
     setOperator(null);
     setWaitingForOperand(false);
     setHistoryExpr('');
-    scrambleNumberPad();
+    scrambleAll();
+  };
+
+  // Unified operator click router
+  const handleOperatorClick = (op) => {
+    if (op === '=') {
+      handleEquals();
+    } else if (op === 'C') {
+      handleClear();
+    } else if (op === '.') {
+      inputDecimal();
+    } else {
+      performOperation(op);
+    }
+  };
+
+  // Microscopic operator button renderer (~14px x 14px with 9px font)
+  const renderMicroOperator = (index, extraClasses = '') => {
+    const op = operators[index];
+    const isSpecial = op === '=' || op === 'C';
+    return (
+      <button
+        type="button"
+        onClick={() => handleOperatorClick(op)}
+        title={`Microscopic Operator: '${op}'`}
+        className={`w-[14px] h-[14px] text-[9px] leading-none p-0 font-mono font-black border border-black cursor-pointer flex items-center justify-center shadow-none select-none transition-all duration-75 ${
+          isSpecial
+            ? 'bg-red-400 hover:bg-yellow-300 text-black active:bg-green-400'
+            : 'bg-yellow-300 hover:bg-white text-black active:bg-pink-400'
+        } ${extraClasses}`}
+      >
+        {op}
+      </button>
+    );
   };
 
   return (
@@ -140,7 +179,7 @@ export default function WorstCalculator() {
       {/* OBNOXIOUS RETRO TICKER */}
       <div className="w-full bg-black text-[#00ff00] font-mono text-[11px] py-1 px-2 border-y-2 border-yellow-400 overflow-hidden mb-3 shadow">
         <div className="retro-marquee font-bold">
-          ⚠️ ARITHMETIC SYSTEM ARMED & READY • DIGITS SCRAMBLE AFTER EVERY SINGLE KEYPRESS TO FOIL MUSCLE MEMORY • ACCURACY RATING: 99.98% • BEWARE OF MICROSCOPIC OPERATORS WEDGED IN CREVICES • GIANT DIGITS ARE HIGH VOLTAGE • NO REFUNDS FOR MATH ERRORS •
+          ⚠️ ARITHMETIC SYSTEM ARMED & READY • BOTH NUMBERS AND MICROSCOPIC OPERATORS SCRAMBLE INTO RANDOM CREVICES AFTER EVERY SINGLE PRESS • TOTAL DISORIENTATION GUARANTEED • ACCURACY RATING: 99.98% •
         </div>
       </div>
 
@@ -150,26 +189,24 @@ export default function WorstCalculator() {
           📟 THE ULTIMATE USER-HOSTILE CALCULATOR 📟
         </h2>
         <p className="text-[11px] font-papyrus text-stone-800 font-bold mt-1">
-          "Engineered by top UX sadists — numbers reshuffle perpetually after every click!"
+          "Both digits & microscopic operators reshuffle perpetually across hairline crevices!"
         </p>
       </div>
 
-      {/* MAIN CALCULATOR CONTAINER WITH SCRAMBLED GIANT DIGITS & MICROSCOPIC OPERATORS */}
+      {/* MAIN CALCULATOR CONTAINER WITH DYNAMICALLY SCRAMBLED DIGITS & OPERATORS */}
       <div className="max-w-4xl mx-auto bg-[#c5a059] p-4 border-8 border-double border-[#5c3a00] shadow-[12px_12px_0_#2b1800] relative">
         <div className="flex justify-between items-center mb-3 border-b-2 border-black pb-1 text-[10px] font-mono text-amber-950 font-bold">
           <span>STATUS: ARITHMETIC UNLOCKED</span>
-          <span className="bg-red-600 text-yellow-200 px-1 border border-black animate-pulse">
-            🔀 SHUFFLES TRIGGERED: {scrambleCount}
+          <span className="bg-red-600 text-yellow-200 px-1.5 py-0.5 border border-black animate-pulse">
+            🔀 TOTAL RESHUFFLES: {scrambleCount} (DIGITS + OPERATORS)
           </span>
           <span>CALC-CORE 64-BIT</span>
         </div>
 
         {/* 
-          JUMBLED DIGITS GRID:
-          Digits 0-9 dynamically scrambled after EVERY press!
-          - Slot 0: Top-left giant digit
-          - Slot 1: Top-right mega giant digit (~15% screen coverage), with tiny '+' wedged right beside it!
-          - Crevices: microscopic '-', '*', '/', 'C', '=', '.'
+          JUMBLED DIGITS & SCRAMBLED OPERATORS GRID:
+          - Digits 0-9 dynamically scrambled after EVERY press
+          - Microscopic operators (index 0 to 6) dynamically scrambled across crevices after EVERY press!
         */}
         <div className="grid grid-cols-12 gap-2 relative min-h-[460px] items-stretch">
           
@@ -187,29 +224,21 @@ export default function WorstCalculator() {
             </button>
           </div>
 
-          {/* CREVICE 1: Tiny Minus '-' and Tiny Clear 'C' wedged between Slot 0 and top-right area */}
+          {/* CREVICE 1: Scrambled Microscopic Operators #0 and #1 */}
           <div className="col-span-1 flex flex-col items-center justify-around py-2">
-            <button
-              type="button"
-              onClick={() => performOperation('-')}
-              title="Microscopic Minus Operator"
-              className="w-[14px] h-[14px] text-[9px] leading-none p-0 bg-yellow-300 hover:bg-white text-black font-mono font-black border border-black cursor-pointer flex items-center justify-center shadow-none active:bg-red-400"
-            >
-              -
-            </button>
-            <button
-              type="button"
-              onClick={handleClear}
-              title="Microscopic Clear Button"
-              className="w-[14px] h-[14px] text-[9px] leading-none p-0 bg-red-400 hover:bg-white text-black font-mono font-black border border-black cursor-pointer flex items-center justify-center shadow-none active:bg-yellow-400"
-            >
-              C
-            </button>
+            <div className="flex flex-col items-center">
+              {renderMicroOperator(0)}
+              <span className="text-[6px] font-mono font-bold text-black mt-0.5">op</span>
+            </div>
+            <div className="flex flex-col items-center">
+              {renderMicroOperator(1)}
+              <span className="text-[6px] font-mono font-bold text-black mt-0.5">op</span>
+            </div>
           </div>
 
           {/* 
             SLOT 1: MEGA GIANT DIGIT (PROMINENTLY TOP-RIGHT, COVERING ~15% OF SCREEN AREA)
-            Followed immediately by microscopic '+' wedged right after it!
+            Followed immediately by scrambled Microscopic Operator #2 wedged right beside it!
           */}
           <div className="col-span-6 md:col-span-7 flex items-center justify-start gap-1 pl-2">
             <button
@@ -229,23 +258,16 @@ export default function WorstCalculator() {
               </span>
             </button>
 
-            {/* MICROSCOPIC '+' OPERATOR WEDGED RIGHT AFTER GIANT SLOT 1 */}
+            {/* MICROSCOPIC OPERATOR #2 WEDGED RIGHT AFTER GIANT SLOT 1 */}
             <div className="flex flex-col items-center justify-center self-start mt-2">
-              <button
-                type="button"
-                onClick={() => performOperation('+')}
-                title="Microscopic Plus Operator (Wedged beside Giant Slot)"
-                className="w-[14px] h-[14px] text-[9px] leading-none p-0 bg-white hover:bg-yellow-300 text-black font-mono font-black border border-black cursor-pointer flex items-center justify-center shadow-none active:bg-green-400 animate-pulse"
-              >
-                +
-              </button>
+              {renderMicroOperator(2, 'animate-pulse')}
               <span className="text-[7px] font-mono text-red-950 font-black mt-0.5 -rotate-90 origin-top">
-                tiny+
+                op #{operators[2]}
               </span>
             </div>
           </div>
 
-          {/* MIDDLE ROW: Slot 2, Slot 3, Slot 4, with microscopic * and / */}
+          {/* MIDDLE ROW: Slot 2, Crevice #3, Slot 3, Crevice #4, Slot 4 */}
           {/* SLOT 2: GIANT DIGIT */}
           <div className="col-span-4 md:col-span-3 flex items-center justify-center">
             <button
@@ -260,16 +282,9 @@ export default function WorstCalculator() {
             </button>
           </div>
 
-          {/* CREVICE 2: Microscopic Multiply '*' */}
+          {/* CREVICE 2: Scrambled Microscopic Operator #3 */}
           <div className="col-span-1 flex items-center justify-center">
-            <button
-              type="button"
-              onClick={() => performOperation('*')}
-              title="Microscopic Multiply Operator"
-              className="w-[14px] h-[14px] text-[9px] leading-none p-0 bg-cyan-200 hover:bg-white text-black font-mono font-black border border-black cursor-pointer flex items-center justify-center shadow-none active:bg-amber-300"
-            >
-              *
-            </button>
+            {renderMicroOperator(3)}
           </div>
 
           {/* SLOT 3: GIANT DIGIT */}
@@ -286,16 +301,9 @@ export default function WorstCalculator() {
             </button>
           </div>
 
-          {/* CREVICE 3: Microscopic Divide '/' */}
+          {/* CREVICE 3: Scrambled Microscopic Operator #4 */}
           <div className="col-span-1 flex items-center justify-center">
-            <button
-              type="button"
-              onClick={() => performOperation('/')}
-              title="Microscopic Divide Operator"
-              className="w-[14px] h-[14px] text-[9px] leading-none p-0 bg-lime-200 hover:bg-white text-black font-mono font-black border border-black cursor-pointer flex items-center justify-center shadow-none active:bg-purple-300"
-            >
-              /
-            </button>
+            {renderMicroOperator(4)}
           </div>
 
           {/* SLOT 4: GIANT DIGIT */}
@@ -312,7 +320,7 @@ export default function WorstCalculator() {
             </button>
           </div>
 
-          {/* BOTTOM ROW: Slot 5, Slot 6, Slot 7, Slot 8, Slot 9 */}
+          {/* BOTTOM ROW: Slot 5, Slot 6, Crevice #5, Slot 7, Slot 8, Crevice #6, Slot 9 */}
           {/* SLOT 5: GIANT DIGIT */}
           <div className="col-span-3 md:col-span-2 flex items-center justify-center">
             <button
@@ -341,17 +349,10 @@ export default function WorstCalculator() {
             </button>
           </div>
 
-          {/* CREVICE 4: Microscopic Equals '=' */}
+          {/* CREVICE 4: Scrambled Microscopic Operator #5 */}
           <div className="col-span-1 flex flex-col items-center justify-center gap-1">
-            <button
-              type="button"
-              onClick={handleEquals}
-              title="Microscopic Equals Operator (=)"
-              className="w-[14px] h-[14px] text-[9px] leading-none p-0 bg-[#4ade80] hover:bg-white text-black font-mono font-black border border-black cursor-pointer flex items-center justify-center shadow-none active:bg-orange-400 animate-bounce"
-            >
-              =
-            </button>
-            <span className="text-[7px] font-mono text-black font-bold">eq</span>
+            {renderMicroOperator(5, 'animate-bounce')}
+            <span className="text-[7px] font-mono text-black font-bold">op</span>
           </div>
 
           {/* SLOT 7: GIANT DIGIT */}
@@ -382,16 +383,9 @@ export default function WorstCalculator() {
             </button>
           </div>
 
-          {/* CREVICE 5: Microscopic Decimal '.' */}
+          {/* CREVICE 5: Scrambled Microscopic Operator #6 */}
           <div className="col-span-1 flex items-center justify-center">
-            <button
-              type="button"
-              onClick={inputDecimal}
-              title="Microscopic Decimal Dot"
-              className="w-[14px] h-[14px] text-[9px] leading-none p-0 bg-white hover:bg-gray-300 text-black font-mono font-black border border-black cursor-pointer flex items-center justify-center shadow-none"
-            >
-              .
-            </button>
+            {renderMicroOperator(6)}
           </div>
 
           {/* SLOT 9: GIANT DIGIT */}
@@ -413,10 +407,10 @@ export default function WorstCalculator() {
         {/* FUNNY HELPER STICKERS */}
         <div className="mt-4 pt-2 border-t-2 border-dashed border-black flex flex-wrap justify-between items-center text-[10px] text-black font-bold">
           <span className="bg-yellow-200 px-2 py-0.5 border border-black">
-            💡 Numbers scramble into new slots after EVERY press!
+            💡 Numbers AND microscopic operators scramble into new crevices after EVERY press!
           </span>
           <span className="bg-white px-2 py-0.5 border border-black">
-            Tiny '=', '-', '*', '/', 'C' wedged in between digits!
+            Find '+', '-', '*', '/', '=', 'C', '.' in the hairline cracks!
           </span>
         </div>
       </div>
